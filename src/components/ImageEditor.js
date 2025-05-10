@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import axios from "axios";
 
@@ -10,7 +11,12 @@ const ImageEditor = () => {
   const [resultUrl, setResultUrl] = useState("");
 
   const handleSubmit = async () => {
-    if (!image) return alert("Please upload an image first.");
+    console.log("🔁 Submit clicked");
+
+    if (!image) {
+      alert("Please upload an image first.");
+      return;
+    }
 
     const formData = new FormData();
     formData.append("image", image);
@@ -19,11 +25,15 @@ const ImageEditor = () => {
     formData.append("roomType", roomType);
     formData.append("features", JSON.stringify(features.split(",")));
 
+    console.log("🖼️ File:", image);
+    console.log("📦 FormData ready");
+
     try {
       const response = await axios.post("/api/generate", formData);
+      console.log("✅ AI response:", response.data);
       setResultUrl(response.data.url);
     } catch (err) {
-      console.error("Error generating image:", err);
+      console.error("❌ Error generating image:", err);
       alert("Something went wrong while generating the image.");
     }
   };
