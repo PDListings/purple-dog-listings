@@ -1,27 +1,18 @@
 
-import formidable from "formidable";
-import fs from "fs";
-import { v2 as cloudinary } from "cloudinary";
-import { Readable } from "stream";
-import OpenAI from "openai";
+const formidable = require("formidable");
+const fs = require("fs");
+const path = require("path");
+const sharp = require("sharp");
+const { Configuration, OpenAIApi } = require("openai");
+const { v4: uuidv4 } = require("uuid");
+const cloudinary = require("../../lib/cloudinary");
 
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
-
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
-
-const openai = new OpenAI({
+const configuration = new Configuration({
   apiKey: process.env.OPENAI_API_KEY,
 });
+const openai = new OpenAIApi(configuration);
 
-export default async function handler(req, res) {
+module.exports = async (req, res) => {
   if (req.method !== "POST") {
     return res.status(405).json({ message: "Method not allowed" });
   }
@@ -30,45 +21,55 @@ export default async function handler(req, res) {
 
   form.parse(req, async (err, fields, files) => {
     if (err) {
-      console.error("Form parse error:", err);
-      return res.status(500).json({ message: "Failed to parse form" });
+      console.error("Form parsing error:", err);
+      return res.status(500).json({ message: "Form parsing error" });
+    }
+
+    const imageFile = files.image;
+    if (!imageFile || !imageFile.filepath) {
+      return res.status(400).json({ message: "Image file is missing" });
     }
 
     try {
-      const { category, style, roomType, features } = fields;
-      const imageFile = files.image;
+      const resizedBuffer = await sharp(imageFile.filepath)
+        .resize(1024, 1024, { fit: "contain", background: "#ffffff" })
+        .png()
+        .toBuffer();
 
-      const prompt = \`Make this a beautifully designed \${style} \${category} \${roomType} with \${JSON.parse(features).join(", ")}\`;
+      const maskBuffer = Buffer.from(
+        new Uint8Array(1024 * 1024 * 4).fill(255)
+      );
 
-      const imageBuffer = fs.readFileSync(imageFile[0].filepath);
-
-      const response = await openai.images.edit({
-        image: imageBuffer,
-        mask: imageBuffer,
-        prompt,
-        n: 1,
-        size: "1024x1024",
-        response_format: "b64_json",
-      });
-
-      const b64 = response.data[0].b64_json;
-      const buffer = Buffer.from(b64, "base64");
-
-      const cloudinaryUpload = await new Promise((resolve, reject) => {
-        const uploadStream = cloudinary.uploader.upload_stream(
-          { folder: "purple-dog-listings" },
-          (error, result) => {
-            if (error) return reject(error);
-            resolve(result);
+      const uploadResult = await cloudinary.uploader.upload_stream(
+        { resource_type: "image", public_id: `pdl_${uuidv4()}` },
+        async (error, result) => {
+          if (error) {
+            console.error("Cloudinary upload error:", error);
+            return res.status(500).json({ message: "Cloudinary upload failed" });
           }
-        );
-        Readable.from(buffer).pipe(uploadStream);
-      });
 
-      return res.status(200).json({ url: cloudinaryUpload.secure_url });
-    } catch (error) {
-      console.error("Image generation error:", error);
-      return res.status(500).json({ message: "Image generation failed" });
+          try {
+            const response = await openai.createImageEdit(
+              resizedBuffer,
+              maskBuffer,
+              `${fields.style} ${fields.roomType} with ${JSON.parse(fields.features).join(", ")}`,
+              1,
+              "1024x1024"
+            );
+
+            return res.status(200).json({ url: response.data.data[0].url });
+          } catch (aiError) {
+            console.error("OpenAI error:", aiError);
+            return res.status(500).json({ message: "Image generation failed" });
+          }
+        }
+      );
+
+      const stream = uploadResult;
+      stream.end(resizedBuffer);
+    } catch (e) {
+      console.error("Processing error:", e);
+      res.status(500).json({ message: "Server error during image processing" });
     }
   });
-}
+};
