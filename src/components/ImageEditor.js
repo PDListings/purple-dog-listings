@@ -10,6 +10,8 @@ const ImageEditor = () => {
   const [resultUrl, setResultUrl] = useState("");
 
   const handleSubmit = async () => {
+    if (!image) return alert("Please upload an image first.");
+
     const formData = new FormData();
     formData.append("image", image);
     formData.append("category", category);
@@ -17,20 +19,41 @@ const ImageEditor = () => {
     formData.append("roomType", roomType);
     formData.append("features", JSON.stringify(features.split(",")));
 
-    const response = await axios.post("http://localhost:5000/edit-home-image", formData);
-    setResultUrl(response.data.url);
+    try {
+      const response = await axios.post("/api/generate", formData);
+      setResultUrl(response.data.url);
+    } catch (err) {
+      console.error("Error generating image:", err);
+      alert("Something went wrong while generating the image.");
+    }
   };
 
   return (
     <div>
+      <h1>Purple Dog Listings - AI Editor</h1>
       <input type="file" onChange={(e) => setImage(e.target.files[0])} />
       <select value={category} onChange={(e) => setCategory(e.target.value)}>
         <option value="interior">Interior</option>
         <option value="exterior">Exterior</option>
       </select>
-      <input type="text" placeholder="Style" value={style} onChange={(e) => setStyle(e.target.value)} />
-      <input type="text" placeholder="Room Type" value={roomType} onChange={(e) => setRoomType(e.target.value)} />
-      <input type="text" placeholder="Features (comma-separated)" value={features} onChange={(e) => setFeatures(e.target.value)} />
+      <input
+        type="text"
+        placeholder="Style"
+        value={style}
+        onChange={(e) => setStyle(e.target.value)}
+      />
+      <input
+        type="text"
+        placeholder="Room Type"
+        value={roomType}
+        onChange={(e) => setRoomType(e.target.value)}
+      />
+      <input
+        type="text"
+        placeholder="Features (comma-separated)"
+        value={features}
+        onChange={(e) => setFeatures(e.target.value)}
+      />
       <button onClick={handleSubmit}>Generate AI Edited Image</button>
       {resultUrl && <img src={resultUrl} alt="AI Edited Result" />}
     </div>

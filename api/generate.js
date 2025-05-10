@@ -1,32 +1,34 @@
+import formidable from "formidable";
+import fs from "fs";
+import path from "path";
 
-// /api/generate.js
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
 
-// Prompt builder logic (from backend/utils/promptBuilder.js)
-function buildPrompt(style, roomType, features) {
-  let prompt = `a ${style} ${roomType}`;
-  if (features && features.trim() !== "") {
-    prompt += ` featuring ${features}`;
-  }
-  return prompt;
-}
-
-// Vercel serverless API handler
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Only POST requests allowed' });
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { imageBase64, style, roomType, features } = req.body;
+  const form = new formidable.IncomingForm({ multiples: false });
 
-  if (!imageBase64 || !style || !roomType) {
-    return res.status(400).json({ error: 'Missing required fields' });
-  }
+  form.parse(req, async (err, fields, files) => {
+    if (err) {
+      console.error("Form parse error:", err);
+      return res.status(500).json({ error: "Error parsing the form data" });
+    }
 
-  const prompt = buildPrompt(style, roomType, features);
+    try {
+      // Simulate image processing logic (replace with OpenAI API if needed)
+      const imagePath = "/placeholder-edited-image.jpg"; // Placeholder output path
 
-  // TODO: replace this mock with OpenAI API call or image editor logic
-  // Example return structure:
-  const generatedImageUrl = "https://example.com/generated-image.png";
-
-  res.status(200).json({ image: generatedImageUrl });
+      return res.status(200).json({ url: imagePath });
+    } catch (error) {
+      console.error("Image processing failed:", error);
+      return res.status(500).json({ error: "AI image generation failed" });
+    }
+  });
 }
