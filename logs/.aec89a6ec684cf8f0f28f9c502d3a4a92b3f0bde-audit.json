@@ -1,0 +1,15 @@
+{
+    "keep": {
+        "days": true,
+        "amount": 14
+    },
+    "auditLog": "/Users/frankcaruso/Desktop/purple-dog-listings/logs/.aec89a6ec684cf8f0f28f9c502d3a4a92b3f0bde-audit.json",
+    "files": [
+        {
+            "date": 1747105623709,
+            "name": "/Users/frankcaruso/Desktop/purple-dog-listings/logs/combined-2025-05-12.log",
+            "hash": "a2fc3ead5bfda1dcb81a4e40f7729daf4358333fb6cbd48d4dbc7698ea4bc55f"
+        }
+    ],
+    "hashType": "sha256"
+}
